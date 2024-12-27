@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useCookies } from "react-cookie";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
+import SideBar from "../components/SideBar";
 
 const HomePage = () => {
   const navigate = useNavigate();
   const [cookies, removeCookie] = useCookies([]);
   const [username, setUsername] = useState("");
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
     const verifyCookie = async () => {
@@ -15,19 +17,33 @@ const HomePage = () => {
         navigate("/login");
       }
       const { data } = await axios.post(
-        "http://localhost:4000",
+        "http://localhost:4000/api/auth/verify",
         {},
         { withCredentials: true }
       );
       const { status, user } = data;
       setUsername(user);
-      return status
-        ? toast(`Welcome back, ${user}!`, {
-            position: "top-right",
-          })
-        : (removeCookie("token"), navigate("/login"));
+      if (status) {
+        toast(`Welcome back, ${user}!`, {
+          position: "top-right",
+        });
+      } else {
+        removeCookie("token");
+        navigate("/login");
+      }
     };
+
+    const fetchUsers = async () => {
+      try {
+        const { data } = await axios.get("http://localhost:4000/api/users"); // Update with your API endpoint
+        setUsers(data);
+      } catch (err) {
+        console.error("Error fetching users", err);
+      }
+    };
+
     verifyCookie();
+    fetchUsers();
   }, [cookies, navigate, removeCookie]);
 
   const Logout = () => {
@@ -36,23 +52,12 @@ const HomePage = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-md p-6 bg-white shadow-xl rounded-lg">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-4">
-          Welcome, <span className="text-blue-500">{username}</span>!
-        </h1>
-        <p className="text-center text-gray-600 mb-6">
-          We're glad to have you here. Explore and enjoy the experience!
-        </p>
-        <button
-          onClick={Logout}
-          className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-200"
-        >
-          Logout
-        </button>
+    <>
+      <div className="flex min-h-screen p-2 bg-slate-100">
+        <SideBar user={username} onLogout={Logout} users={users} />
+        <div className="panel flex-1 bg-[#e4e5e5] h-full">Panel</div>
       </div>
-      <ToastContainer />
-    </div>
+    </>
   );
 };
 
