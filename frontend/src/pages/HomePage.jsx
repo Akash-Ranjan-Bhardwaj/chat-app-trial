@@ -4,7 +4,8 @@ import { useCookies } from "react-cookie";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import SideBar from "../components/SideBar";
-
+import ChatPanel from "../components/ChatPanel";
+import { io } from "socket.io-client";
 const HomePage = () => {
   const navigate = useNavigate();
   const [cookies, removeCookie] = useCookies([]);
@@ -55,7 +56,9 @@ const HomePage = () => {
     <>
       <div className="flex min-h-screen p-2 bg-slate-100">
         <SideBar user={username} onLogout={Logout} users={users} />
-        <div className="panel flex-1 bg-[#e4e5e5] h-full">Panel</div>
+        <div className="panel flex-1 bg-[#e4e5e5] h-full">
+          <ChatPanel username={username} users={users} />
+        </div>
       </div>
     </>
   );
