@@ -3,8 +3,8 @@ import { io } from "socket.io-client";
 
 const socket = io("http://localhost:4000", { autoConnect: false });
 
-const ChatPanel = ({ username }) => {
-  const [room, setRoom] = useState("");
+const ChatPanel = ({ username, users }) => {
+  const [selectedUser, setSelectedUser] = useState("");
   const [message, setMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
 
@@ -12,23 +12,19 @@ const ChatPanel = ({ username }) => {
     // Connect to the socket server
     socket.connect();
 
+    // Register the current user
+    socket.emit("register_user", username);
+
     // Cleanup function to disconnect socket only when component is unmounted
     return () => {
       socket.disconnect();
     };
-  }, []); // Empty dependency means this will run only once when component mounts/unmounts
+  }, [username]); // Register the user once the username is available
 
   useEffect(() => {
     // Add event listener for receiving messages
     const handleReceiveMessage = (data) => {
-      // Only add the message to the list if it's not a duplicate
-      const isDuplicate = messageList.some(
-        (msg) => msg.user === data.user && msg.text === data.text
-      );
-
-      if (!isDuplicate) {
-        setMessageList((prev) => [...prev, data]);
-      }
+      setMessageList((prev) => [...prev, data]);
     };
 
     socket.on("receive_message", handleReceiveMessage);
@@ -37,21 +33,10 @@ const ChatPanel = ({ username }) => {
     return () => {
       socket.off("receive_message", handleReceiveMessage);
     };
-  }, [messageList]); // Dependency on messageList to ensure latest state is used
+  }, []);
 
-  const joinRoom = () => {
-    if (room.trim() === "") {
-      alert("Room name cannot be empty");
-      return;
-    }
-
-    socket.emit("join_room", room, (ack) => {
-      if (ack.error) {
-        alert(`Error: ${ack.error}`);
-      } else {
-        alert(`Successfully joined room: ${room}`);
-      }
-    });
+  const selectUser = (user) => {
+    setSelectedUser(user);
   };
 
   const sendMessage = () => {
@@ -60,58 +45,85 @@ const ChatPanel = ({ username }) => {
       return;
     }
 
-    const newMessage = { room, user: username, text: message };
+    const newMessage = {
+      toUser: selectedUser,
+      fromUser: username,
+      text: message,
+    };
 
-    // Emit the message to the server without immediately adding it to the state
+    // Emit the message to the server to be sent to the selected user
     socket.emit("send_message", newMessage);
 
-    // Only update the state when the server broadcasts the message
-    setMessage("");
+    // Add the sent message to the sender's message list
+    setMessageList((prev) => [
+      ...prev,
+      { user: username, text: message, isOwnMessage: true },
+    ]);
+
+    setMessage(""); // Clear the input field
   };
 
+  // Filter out the current user from the list of available users
+  const availableUsers = users.filter((user) => user.username !== username);
+
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
-      <h2 className="text-lg font-bold mb-4">Chat</h2>
+    <div className="p-6 bg-white rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold mb-4 text-gray-700">Chat</h2>
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Enter room name"
-          className="border rounded p-2 mr-2"
-          value={room}
-          onChange={(e) => setRoom(e.target.value)}
-        />
-        <button
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={joinRoom}
-        >
-          Join Room
-        </button>
+      {/* User list to select a user for chatting */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-700">Select a user to chat</h3>
+        <ul className="space-y-2">
+          {availableUsers.map((user) => (
+            <li
+              key={user._id}
+              onClick={() => selectUser(user.username)}
+              className="cursor-pointer p-2 rounded-md bg-gray-50 hover:bg-gray-200 transition-colors"
+            >
+              {user.username}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <div className="h-64 overflow-y-scroll border p-2 mb-4">
-        {messageList.map((msg, index) => (
-          <div key={index} className="mb-2">
-            <strong>{msg.user}: </strong>
-            <span>{msg.text}</span>
+      {/* Chat with selected user */}
+      {selectedUser && (
+        <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+          <h3 className="text-xl font-semibold text-gray-700 mb-4">Chat with {selectedUser}</h3>
+          <div className="h-64 overflow-y-scroll bg-white border p-4 rounded-lg mb-4 shadow-inner">
+            {messageList
+              .filter(
+                (msg) =>
+                  msg.user === selectedUser || msg.user === username || msg.isOwnMessage
+              )
+              .map((msg, index) => (
+                <div key={index} className="mb-3">
+                  <div className={msg.user === username ? 'text-blue-600' : 'text-gray-800'}>
+                    <strong>{msg.user}: </strong>
+                    <span>{msg.text}</span>
+                  </div>
+                </div>
+              ))}
           </div>
-        ))}
-      </div>
-      <div className="flex">
-        <input
-          type="text"
-          placeholder="Type a message"
-          className="flex-1 border rounded p-2"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-        <button
-          className="ml-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          onClick={sendMessage}
-        >
-          Send
-        </button>
-      </div>
+
+          {/* Input field to send messages */}
+          <div className="flex items-center">
+            <input
+              type="text"
+              placeholder="Type a message"
+              className="flex-1 border rounded-lg p-3 text-lg"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <button
+              className="ml-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              onClick={sendMessage}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

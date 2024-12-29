@@ -5,7 +5,7 @@ import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import SideBar from "../components/SideBar";
 import ChatPanel from "../components/ChatPanel";
-import { io } from "socket.io-client";
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [cookies, removeCookie] = useCookies([]);

@@ -15,25 +15,36 @@ const io = new Server(server, {
   },
 });
 
+let users = {}; // Track connected users by their socket ids
+
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  // Listen for joining a specific room
-  socket.on("join_room", (room) => {
-    socket.join(room);
-    console.log(`User ${socket.id} joined room: ${room}`);
+  // Track the user with their socket id
+  socket.on("register_user", (username) => {
+    users[username] = socket.id;
+    console.log(`User registered: ${username} with socket ID: ${socket.id}`);
   });
 
-  // Listen for messages and send them to the specific room
-  socket.on("send_message", ({ room, user, text }) => {
-    io.to(room).emit("receive_message", { user, text });
+  // Listen for sending messages to a specific user
+  socket.on("send_message", ({ toUser, fromUser, text }) => {
+    const toSocketId = users[toUser];
+    if (toSocketId) {
+      io.to(toSocketId).emit("receive_message", { user: fromUser, text });
+    }
   });
 
+  // Handle disconnect
   socket.on("disconnect", () => {
-    console.log(`User disconnected: ${socket.id}`);
+    // Remove the user from the tracking list when they disconnect
+    for (const [username, socketId] of Object.entries(users)) {
+      if (socketId === socket.id) {
+        delete users[username];
+        console.log(`User disconnected: ${username}`);
+      }
+    }
   });
 });
-
 
 const authRoute = require("./Routes/AuthRoute");
 const userRoute = require("./Routes/UserRoute");
