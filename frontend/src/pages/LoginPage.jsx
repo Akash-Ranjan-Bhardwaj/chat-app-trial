@@ -12,35 +12,7 @@ const LoginPage = () => {
     password: "",
   });
 
-  // useEffect(() => {
-  //   const verifyCookie = async () => {
-  //     try {
-  //       if (!cookies.token) {
-  //         return navigate("/login");
-  //       }
-  //       const { data } = await axios.post(
-  //         "http://localhost:4000/hgbyb",
-  //         {},
-  //         { withCredentials: true }
-  //       );
-  //       const { status, user } = data;
-
-  //       if (status) {
-  //         toast.success(`Welcome back, ${user}`, { position: "top-right" });
-  //         navigate("/");
-  //       } else {
-  //         removeCookie("token");
-  //         navigate("/login");
-  //       }
-  //     } catch (error) {
-  //       console.error("Cookie verification failed:", error.message);
-  //       removeCookie("token");
-  //       navigate("/login");
-  //     }
-  //   };
-  //   verifyCookie();
-  // }, [cookies, navigate, removeCookie]);
-
+ 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setInputValues((prev) => ({ ...prev, [name]: value }));

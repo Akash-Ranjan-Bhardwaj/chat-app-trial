@@ -12,19 +12,32 @@ const ChatPanel = ({ username }) => {
     // Connect to the socket server
     socket.connect();
 
+    // Cleanup function to disconnect socket only when component is unmounted
+    return () => {
+      socket.disconnect();
+    };
+  }, []); // Empty dependency means this will run only once when component mounts/unmounts
+
+  useEffect(() => {
     // Add event listener for receiving messages
     const handleReceiveMessage = (data) => {
-      setMessageList((prev) => [...prev, data]);
+      // Only add the message to the list if it's not a duplicate
+      const isDuplicate = messageList.some(
+        (msg) => msg.user === data.user && msg.text === data.text
+      );
+
+      if (!isDuplicate) {
+        setMessageList((prev) => [...prev, data]);
+      }
     };
 
     socket.on("receive_message", handleReceiveMessage);
 
-    // Cleanup function to remove event listeners and disconnect socket
+    // Cleanup function to remove event listeners when component is unmounted
     return () => {
       socket.off("receive_message", handleReceiveMessage);
-      socket.disconnect();
     };
-  }, []);
+  }, [messageList]); // Dependency on messageList to ensure latest state is used
 
   const joinRoom = () => {
     if (room.trim() === "") {
@@ -48,8 +61,11 @@ const ChatPanel = ({ username }) => {
     }
 
     const newMessage = { room, user: username, text: message };
-    setMessageList((prev) => [...prev, newMessage]);
+
+    // Emit the message to the server without immediately adding it to the state
     socket.emit("send_message", newMessage);
+
+    // Only update the state when the server broadcasts the message
     setMessage("");
   };
 
